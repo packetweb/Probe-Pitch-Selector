@@ -2,6 +2,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
+import io
 
 # --- 1. Page & Layout Configuration ---
 st.set_page_config(page_title="RF Probe Layout Validator", layout="wide", initial_sidebar_state="collapsed")
@@ -39,6 +40,8 @@ BASE_SPECS = {
     "tilt": 0.0, "tip_len": 0.7, "solder_h": 0.0,
     "blade_height": 0.6, "b_horiz_len": 0.25    
 }
+
+T_D = BASE_SPECS["tip_d"]
 
 # The complete database structure provided
 PRODUCT_DATABASE = {
@@ -269,6 +272,90 @@ with st.expander("📌 Manage Multiple Target Pad Layouts", expanded=True):
         cols[0].info(f"**{lay['name']}**: Pitch {lay['pitch']}{lay['unit']} | Size {lay['w']}x{h_val}{lay['unit']}")
         if cols[1].button("🗑️", key=f"del_{i}"):
             st.session_state.pad_layouts.pop(i); st.rerun()
+        
+        # --- Pad Preview: render both in one figure ---
+        f = 0.001 if lay['unit'] == "um" else MIL_TO_MM
+        pw_m = lay['w'] * f
+        ph_m = lay.get('h', lay['w']) * f
+        pi_m = lay['pitch'] * f
+
+        margin = max(pw_m, pi_m) * 0.5
+        y_half = ph_m / 2 + margin * 2.0
+        fixed_dpi = 100
+        fixed_px_h = 300
+
+        # Calculate widths for each subplot
+        spans = []
+        for pin_count in [2, 4]:
+            x_pads_prev = [(-(pin_count - 1) * pi_m / 2) + j * pi_m for j in range(pin_count)]
+            x_min = x_pads_prev[0] - pw_m / 2 - margin * 1.5
+            x_max = x_pads_prev[-1] + pw_m / 2 + margin
+            spans.append((x_min, x_max, x_pads_prev))
+
+        # Width ratio between subplots
+        w1 = spans[0][1] - spans[0][0]
+        w2 = spans[1][1] - spans[1][0]
+        fig_h_in = fixed_px_h / fixed_dpi
+        fig_w_in = fig_h_in * (w1 + w2) / (2 * y_half)
+
+        preview_fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(fig_w_in, fig_h_in),
+                                                gridspec_kw={'width_ratios': [w1, w2]})
+        preview_fig.subplots_adjust(top=0.9, bottom=0.05, left=0.05, right=0.95, wspace=0.3)
+
+        for ax, pin_count, (x_min, x_max, x_pads_prev) in zip([ax1, ax2], [2, 4], spans):
+            ax.set_aspect('equal')
+
+            for xp in x_pads_prev:
+                p_patch = get_pad_patch(xp, pw_m, ph_m, lay['shape'])
+                if p_patch:
+                    p_patch.set(facecolor='white', edgecolor='black', lw=1.2, zorder=1)
+                    ax.add_patch(p_patch)
+                s_patch = get_pad_patch(xp, pw_m, ph_m, lay['shape'], offset=UI_CONFIG["safe_dist"] + T_D / 2)
+                if s_patch:
+                    s_patch.set(facecolor=UI_CONFIG["safe_zone_color"], alpha=UI_CONFIG["safe_zone_alpha"], ls='--', lw=1.0, zorder=2)
+                    ax.add_patch(s_patch)
+
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(-y_half, y_half)
+
+            # Width label
+            width_y = -ph_m/2 - margin*0.3
+            ax.annotate('', xy=(x_pads_prev[0] - pw_m/2, width_y), xytext=(x_pads_prev[0] + pw_m/2, width_y),
+                arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
+            ax.text(x_pads_prev[0], width_y - margin*0.05, f"W: {pw_m*1000:.0f} µm",
+                ha='center', va='top', fontsize=7, color='#404040')
+
+            # Pitch label
+            if pin_count > 1:
+                pitch_y = -ph_m/2 - margin*0.7
+                ax.annotate('', xy=(x_pads_prev[0], pitch_y), xytext=(x_pads_prev[1], pitch_y),
+                    arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
+                ax.text((x_pads_prev[0] + x_pads_prev[1]) / 2, pitch_y - margin*0.05,
+                    f"Pitch: {pi_m*1000:.0f} µm", ha='center', va='top', fontsize=7, color='#404040')
+
+            # Height label
+            ax.annotate('', xy=(x_pads_prev[0] - pw_m/2 - margin*0.3, -ph_m/2),
+                xytext=(x_pads_prev[0] - pw_m/2 - margin*0.3, ph_m/2),
+                arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
+            ax.text(x_pads_prev[0] - pw_m/2 - margin*0.35, 0, f"H: {ph_m*1000:.0f} µm",
+                ha='right', va='center', rotation=90, fontsize=7, color='#404040')
+
+            ax.set_title(f"{pin_count}-pad", fontsize=8)
+            ax.axis('off')
+
+        buf = io.BytesIO()
+        preview_fig.savefig(buf, format='png', dpi=fixed_dpi)
+        buf.seek(0)
+        import base64
+        img_b64 = base64.b64encode(buf.getvalue()).decode()
+        st.markdown(
+            f'<div style="display:flex; justify-content:center;">'
+            f'<img src="data:image/png;base64,{img_b64}" style="height:{fixed_px_h}px; width:auto;"/>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        plt.close(preview_fig)
+
 
 st.divider()
 
@@ -427,7 +514,7 @@ if n_lay > 0:
 
     _, col_c, _ = st.columns([3, 4, 3])
     with col_c: 
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig, width='stretch')
         is_ok_final = data['all_res'][st.session_state.active_layout_idx]
         if not is_ok_final: st.error(f"❌ MISALIGNMENT in {curr_lay['name']}.")
         else: st.success(f"✅ COMPLIANT with {curr_lay['name']}.")
