@@ -270,7 +270,10 @@ with st.expander("📌 Manage Multiple Target Pad Layouts", expanded=True):
         h_val = lay.get('h', lay['w']) 
         cols[0].info(f"**{lay['name']}**: Pitch {lay['pitch']}{lay['unit']} | Size {lay['w']}x{h_val}{lay['unit']}")
         if cols[1].button("🗑️", key=f"del_{i}"):
-            st.session_state.pad_layouts.pop(i); st.rerun()
+            st.session_state.pad_layouts.pop(i)
+            for j, layout in enumerate(st.session_state.pad_layouts):
+                layout['name'] = f"Layout {j+1}"
+            st.rerun()
         
         # --- Pad Preview: render both in one figure ---
         f = 0.001 if lay['unit'] == "um" else MIL_TO_MM
