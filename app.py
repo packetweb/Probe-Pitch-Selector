@@ -120,10 +120,9 @@ PRODUCT_DATABASE = {
                 {"part_no": "DP-GSSG-651503", "pitch": 0.30},
                 {"part_no": "DP-GSSG-651504", "pitch": 0.40},
                 {"part_no": "DP-GSSG-651505", "pitch": 0.50},
-                {"part_no": "DP-GSSG-651505", "pitch": 0.60},
+                {"part_no": "DP-GSSG-651506", "pitch": 0.60},
                 {"part_no": "DP-GSSG-651508", "pitch": 0.80},
                 {"part_no": "DP-GSSG-651509", "pitch": 0.90},
-                {"part_no": "DP-GSSG-651510", "pitch": 1.00}
             ]
         },
     }
@@ -319,25 +318,25 @@ with st.expander("📌 Manage Multiple Target Pad Layouts", expanded=True):
             ax.set_ylim(-y_half, y_half)
 
             # Width label
-            width_y = -ph_m/2 - margin*0.3
+            width_y = -ph_m/2 - margin*0.5
             ax.annotate('', xy=(x_pads_prev[0] - pw_m/2, width_y), xytext=(x_pads_prev[0] + pw_m/2, width_y),
                 arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
-            ax.text(x_pads_prev[0], width_y - margin*0.05, f"W: {pw_m*1000:.0f} µm",
+            ax.text(x_pads_prev[0], width_y - margin*0.15, f"W: {pw_m*1000:.0f} µm",
                 ha='center', va='top', fontsize=7, color='#404040')
 
             # Pitch label
             if pin_count > 1:
-                pitch_y = -ph_m/2 - margin*0.7
+                pitch_y = -ph_m/2 - margin*1.1
                 ax.annotate('', xy=(x_pads_prev[0], pitch_y), xytext=(x_pads_prev[1], pitch_y),
                     arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
-                ax.text((x_pads_prev[0] + x_pads_prev[1]) / 2, pitch_y - margin*0.05,
+                ax.text((x_pads_prev[0] + x_pads_prev[1]) / 2, pitch_y - margin*0.15,
                     f"Pitch: {pi_m*1000:.0f} µm", ha='center', va='top', fontsize=7, color='#404040')
 
             # Height label
             ax.annotate('', xy=(x_pads_prev[0] - pw_m/2 - margin*0.3, -ph_m/2),
                 xytext=(x_pads_prev[0] - pw_m/2 - margin*0.3, ph_m/2),
                 arrowprops=dict(arrowstyle='<->', color='#404040', lw=1))
-            ax.text(x_pads_prev[0] - pw_m/2 - margin*0.35, 0, f"H: {ph_m*1000:.0f} µm",
+            ax.text(x_pads_prev[0] - pw_m/2 - margin*0.45, 0, f"H: {ph_m*1000:.0f} µm",
                 ha='right', va='center', rotation=90, fontsize=7, color='#404040')
 
             ax.set_title(f"{pin_count}-pad", fontsize=8)
