@@ -404,7 +404,13 @@ else:
         lbl = f"{p['part_no']} (Pitch: {p['pitch']}mm)".ljust(35) + icon
         model_labels.append(lbl); label_to_data[lbl] = {"pitch": p['pitch'], "part_no": p['part_no'], "all_res": all_res}
 
-    selected_label = st.radio("Select Model for Validation:", model_labels)
+    # Default to the first fully-compliant model (✅) in the list; if none
+    # are fully compliant, fall back to the first item in the list.
+    default_idx = next(
+        (i for i, lbl in enumerate(model_labels) if all(label_to_data[lbl]['all_res'])),
+        0
+    )
+    selected_label = st.radio("Select Model for Validation:", model_labels, index=default_idx)
     data = label_to_data[selected_label]
 
     st.write("🔍 **Individual Layout Compatibility (Click to Preview Simulation):**")
@@ -515,4 +521,4 @@ else:
             st.pyplot(fig, width='stretch')
             is_ok_final = data['all_res'][st.session_state.active_layout_idx]
             if not is_ok_final: st.error(f"❌ MISALIGNMENT in {curr_lay['name']}.")
-            else: st.success(f"✅ COMPLIANT with {curr_lay['name']}.")
+            else: st.success(f"✅ COMPATIBLE with {curr_lay['name']}.")
